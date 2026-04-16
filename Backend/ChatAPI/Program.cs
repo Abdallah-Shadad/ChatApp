@@ -1,7 +1,9 @@
 using ChatAPI.Data;
 using ChatAPI.Hubs;
+using ChatAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -17,14 +19,14 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
-        // 1. DbContext
+        // DbContext
         builder.Services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-        // 2. SignalR
+        // SignalR
         builder.Services.AddSignalR();
 
-        // 3. CORS
+        // CORS
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("SignalRPolicy", policy =>
@@ -36,7 +38,7 @@ public class Program
             });
         });
 
-        // 4. JWT Auth
+        // JWT Auth
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
@@ -68,16 +70,19 @@ public class Program
                 };
             });
 
-        // 5. Authorization
+        // Authorization
         builder.Services.AddAuthorization();
 
-        // builder.Services.AddAutoMapper(typeof(Program));
+        // Auto Mapper 
+        builder.Services.AddAutoMapper(cfg => { }, typeof(Program));
 
+        // Sign Services For DI
+        builder.Services.AddScoped<IAuthService, AuthService>();
 
-        //  6. BUILD THE APP 
+        // BUILD THE APP 
         var app = builder.Build();
 
-        //  7. MIDDLEWARE PIPELINE 
+        // MIDDLEWARE PIPELINE 
 
         if (app.Environment.IsDevelopment())
         {
