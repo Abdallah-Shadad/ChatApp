@@ -15,6 +15,7 @@ namespace ChatAPI.Middleware
                 NotFoundException => (StatusCodes.Status404NotFound, "Not Found"),
                 ForbiddenException => (StatusCodes.Status403Forbidden, "Forbidden"),
                 BadRequestException => (StatusCodes.Status400BadRequest, "Bad Request"),
+                ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
                 _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")
             };
 
@@ -31,5 +32,6 @@ namespace ChatAPI.Middleware
 
             return true;
         }
+
     }
 }

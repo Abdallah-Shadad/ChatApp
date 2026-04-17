@@ -6,6 +6,7 @@ using ChatAPI.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.Intrinsics.Arm;
+using System.Security.Claims;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace ChatAPI.Hubs
@@ -72,6 +73,8 @@ namespace ChatAPI.Hubs
             var isMember = await _context.RoomMembers
                 .AnyAsync(rm => rm.RoomId == roomId && rm.UserId == userId);
 
+            if (!isMember) return;
+
             //Save message to memory and DB
             var newMessage = new Message
             {
@@ -111,25 +114,17 @@ namespace ChatAPI.Hubs
         // Notify others in the group that a user has started typing
         public async Task StartTyping(int roomId, bool isTyping)
         {
-            if (!int.TryParse(Context.UserIdentifier, out int userId)) return;
+            var username = Context.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+            if (string.IsNullOrEmpty(username)) return;
 
-
-            var username = await _context.Users
-                .Where(u => u.Id == userId)
-                .Select(u => u.Username)
-                .FirstOrDefaultAsync();
-
-            //  send to all except the sender
             await Clients.OthersInGroup(roomId.ToString())
                 .SendAsync("UserTyping", new { roomId, username, isTyping });
         }
-
         // Notify others in the group that a user has stopped typing
         public async Task StopTyping(int roomId)
         {
-            if (!int.TryParse(Context.UserIdentifier, out int userId)) return;
-
-            var username = await _context.Users.Where(u => u.Id == userId).Select(u => u.Username).FirstOrDefaultAsync();
+            var username = Context.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+            if (string.IsNullOrEmpty(username)) return;
 
             await Clients.OthersInGroup(roomId.ToString())
                 .SendAsync("UserTyping", new { roomId, username, isTyping = false });

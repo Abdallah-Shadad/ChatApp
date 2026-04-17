@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using ChatAPI.Data;
 using ChatAPI.DTOs;
+using ChatAPI.Exceptions;
 using ChatAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -28,10 +29,10 @@ namespace ChatAPI.Services
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
-                throw new InvalidOperationException("Email already taken");
+                throw new ConflictException("Email already taken");
 
             if (await _context.Users.AnyAsync(u => u.Username == dto.Username))
-                throw new InvalidOperationException("Username already taken");
+                throw new ConflictException("Username already taken");
 
             // AutoMap DTO to User model
             var user = _mapper.Map<User>(dto);
@@ -58,7 +59,7 @@ namespace ChatAPI.Services
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException("Invalid credentials");
+                throw new BadRequestException("Invalid credentials");
 
             // AutoMap to Response DTO
             var responseDto = _mapper.Map<AuthResponseDto>(user);
