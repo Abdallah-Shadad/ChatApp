@@ -17,6 +17,10 @@ namespace ChatAPI.Mappings
             CreateMap<User, AuthResponseDto>()
                 // Ignore Token so i can manually attach it after mapping
                 .ForMember(dest => dest.Token, opt => opt.Ignore());
+
+            // map from message to messageDto 
+            CreateMap<Message, MessageDto>()
+                .ForMember(d => d.SenderName, o => o.MapFrom(s => s.Sender.Username));
         }
     }
 }
