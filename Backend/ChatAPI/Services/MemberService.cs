@@ -1,4 +1,5 @@
 ﻿using ChatAPI.Data;
+using ChatAPI.DTOs;
 using ChatAPI.Enums;
 using ChatAPI.Exceptions;
 using ChatAPI.Models;
@@ -14,21 +15,34 @@ namespace ChatAPI.Services
             _context = context;
         }
 
-        public async Task AddMember(int roomId, int requesterId, int targetUserId)
+        public async Task AddMember(int roomId, int requesterId, string targetUsername)
         {
             var room = await _context.Rooms.FirstOrDefaultAsync(r => r.Id == roomId);
             if (room == null) throw new NotFoundException("Room not found.");
 
-            // Only owner can add members
+            // Only the owner can add members
             if (room.CreatedByUserId != requesterId)
-                throw new ForbiddenException("Only the owner can add members to this room.");
+                throw new ForbiddenException("Only the room owner can add members.");
+
+            // Look up the target user by Username
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == targetUsername);
+            if (targetUser == null) throw new NotFoundException("User not found.");
 
             var isAlreadyMember = await _context.RoomMembers
-                .AnyAsync(rm => rm.RoomId == roomId && rm.UserId == targetUserId);
+                .AnyAsync(rm => rm.RoomId == roomId && rm.UserId == targetUser.Id);
 
-            if (isAlreadyMember) return;
+            if (isAlreadyMember)
+                throw new ConflictException("User is already a member of this room.");
 
-            _context.RoomMembers.Add(new RoomMember { RoomId = roomId, UserId = targetUserId, Role = UserRole.Member });
+            var membership = new RoomMember
+            {
+                RoomId = roomId,
+                UserId = targetUser.Id,
+                Role = UserRole.Member,
+                JoinedAt = DateTime.UtcNow
+            };
+
+            _context.RoomMembers.Add(membership);
             await _context.SaveChangesAsync();
         }
 
@@ -56,6 +70,26 @@ namespace ChatAPI.Services
 
             _context.RoomMembers.Remove(membership);
             await _context.SaveChangesAsync();
+        }
+        public async Task<IEnumerable<MemberResponse>> GetRoomMembers(int roomId, int requesterId)
+        {
+            var isMember = await _context.RoomMembers
+                .AnyAsync(rm => rm.RoomId == roomId && rm.UserId == requesterId);
+
+            if (!isMember) throw new ForbiddenException("You are not a member of this room.");
+
+            var members = await _context.RoomMembers
+                .Include(rm => rm.User)
+                .Where(rm => rm.RoomId == roomId)
+                .Select(rm => new MemberResponse
+                {
+                    UserId = rm.UserId,
+                    Username = rm.User.Username,
+                    Role = rm.Role.ToString()
+                })
+                .ToListAsync();
+
+            return members;
         }
     }
 }

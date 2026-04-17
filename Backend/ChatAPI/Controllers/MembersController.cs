@@ -12,18 +12,25 @@ namespace ChatAPI.Controllers
     [Route("api/rooms/{roomId}/members")]
     public class MembersController(IMemberService memberService) : BaseController
     {
-        [HttpPost]
-        public async Task<IActionResult> AddMember(int roomId, MemberRequest dto)
+        [HttpGet]
+        public async Task<IActionResult> GetMembers(int roomId)
         {
-            await memberService.AddMember(roomId, UserId, dto.UserId);
-            return Ok(new { message = "Member added successfully" });
+            var members = await memberService.GetRoomMembers(roomId, GetUserId());
+            return Ok(members);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddMember(int roomId, MemberRequest request)
+        {
+            await memberService.AddMember(roomId, GetUserId(), request.Username);
+            return NoContent();
         }
 
         [HttpDelete("{targetUserId}")]
         public async Task<IActionResult> RemoveMember(int roomId, int targetUserId)
         {
-            await memberService.RemoveMember(roomId, UserId, targetUserId);
-            return Ok(new { message = "Member removed successfully" });
+            await memberService.RemoveMember(roomId, GetUserId(), targetUserId);
+            return NoContent();
         }
     }
 }

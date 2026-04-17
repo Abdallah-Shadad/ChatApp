@@ -5,6 +5,11 @@ namespace ChatAPI.Controllers
 {
     public abstract class BaseController : ControllerBase
     {
-        protected int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        protected int GetUserId()
+        {
+            var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return claim != null ? int.Parse(claim) : 0;
+        }
+        protected int UserId => GetUserId();
     }
 }
