@@ -5,9 +5,7 @@ using ChatAPI.Enums;
 using ChatAPI.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using System.Runtime.Intrinsics.Arm;
 using System.Security.Claims;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace ChatAPI.Hubs
 {
@@ -15,6 +13,7 @@ namespace ChatAPI.Hubs
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
+
         public ChatHub(AppDbContext context, IMapper mapper)
         {
             _context = context;
@@ -23,13 +22,10 @@ namespace ChatAPI.Hubs
 
         public override async Task OnConnectedAsync()
         {
-
             // Extract User ID
-
             if (!int.TryParse(Context.UserIdentifier, out int userId)) return;
 
-            // Re-Join User In All His Rooms
-
+            // Re-Join User In All Their Active Rooms
             var roomIds = await _context.RoomMembers
                 .Where(rm => rm.UserId == userId)
                 .Select(rm => rm.RoomId)
@@ -40,9 +36,7 @@ namespace ChatAPI.Hubs
                 await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
             }
 
-
-            // Send all Undelevired Messages
-
+            // Fetch and send all Undelivered Messages
             var pendingStatuses = await _context.MessageStatuses
                 .Include(ms => ms.Message)
                     .ThenInclude(m => m.Sender)
@@ -55,7 +49,7 @@ namespace ChatAPI.Hubs
 
                 await Clients.Caller.SendAsync("ReceiveUndeliveredMessages", messagesToPush);
 
-                // Updat Message Status to Delivered
+                // Update Message Status to Delivered
                 foreach (var status in pendingStatuses)
                 {
                     status.Status = MessageStatusEnum.Delivered;
@@ -64,18 +58,19 @@ namespace ChatAPI.Hubs
                 await _context.SaveChangesAsync();
             }
         }
+
         public async Task SendMessage(int roomId, string content)
         {
             // Get userId from token
             if (!int.TryParse(Context.UserIdentifier, out int userId)) return;
 
-            // Check if user is a member of the room
+            // Check if user is actually a member of the room
             var isMember = await _context.RoomMembers
                 .AnyAsync(rm => rm.RoomId == roomId && rm.UserId == userId);
 
-            if (!isMember) return;
+            if (!isMember) return; // Prevent unauthorized broadcasting
 
-            //Save message to memory and DB
+            // Save message to DB
             var newMessage = new Message
             {
                 Content = content,
@@ -84,45 +79,57 @@ namespace ChatAPI.Hubs
                 SentAt = DateTime.UtcNow
             };
 
+            _context.Messages.Add(newMessage);
 
-            //Broadcast to group
-            var roomMembers = await _context.RoomMembers
+            // Create delivery statuses for all members in the room
+            var roomMemberIds = await _context.RoomMembers
                 .Where(rm => rm.RoomId == roomId)
+                .Select(rm => rm.UserId)
                 .ToListAsync();
 
-            var statuses = roomMembers.Select(rm => new MessageStatus
+            var statuses = roomMemberIds.Select(memberId => new MessageStatus
             {
                 Message = newMessage,
-                UserId = rm.UserId,
-                Status = (rm.UserId == userId) ? MessageStatusEnum.Delivered : MessageStatusEnum.Sent
+                UserId = memberId,
+                Status = (memberId == userId) ? MessageStatusEnum.Delivered : MessageStatusEnum.Sent
             }).ToList();
 
-            _context.Messages.Add(newMessage);
             _context.MessageStatuses.AddRange(statuses);
             await _context.SaveChangesAsync();
 
-            var messageWithSender = await _context.Messages
-                .Include(m => m.Sender)
-                .FirstOrDefaultAsync(m => m.Id == newMessage.Id);
+            // FIx : Extract username from JWT claims instead of querying the DB
+            var username = Context.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "Unknown";
 
-            var messageDto = _mapper.Map<MessageDto>(messageWithSender);
+            var messageDto = new MessageDto
+            {
+                Id = newMessage.Id,
+                Content = newMessage.Content,
+                SentAt = newMessage.SentAt,
+                RoomId = newMessage.RoomId,
+                SenderId = userId,
+                SenderName = username
+            };
 
+            // Broadcast to the group
             await Clients.Group(roomId.ToString()).SendAsync("ReceiveMessage", messageDto);
         }
-
 
         // Notify others in the group that a user has started typing
         public async Task StartTyping(int roomId, bool isTyping)
         {
+            // FIx : Extract from JWT token, zero DB queries needed
             var username = Context.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
             if (string.IsNullOrEmpty(username)) return;
 
+            // Send to all except the sender
             await Clients.OthersInGroup(roomId.ToString())
                 .SendAsync("UserTyping", new { roomId, username, isTyping });
         }
+
         // Notify others in the group that a user has stopped typing
         public async Task StopTyping(int roomId)
         {
+            // Fix: Extract from JWT token, zero DB queries needed
             var username = Context.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
             if (string.IsNullOrEmpty(username)) return;
 
@@ -133,35 +140,22 @@ namespace ChatAPI.Hubs
         // Mark message as read by the user
         public async Task MarkAsRead(int roomId)
         {
-
             if (!int.TryParse(Context.UserIdentifier, out int userId)) return;
-            var isMember = await _context.RoomMembers
-                .AnyAsync(rm => rm.RoomId == roomId && rm.UserId == userId);
 
+            // single query to fetch all unread message statuses for this user in the specified room
             var unreadQuery = _context.MessageStatuses
-                 .Where(
-                    ms => ms.UserId == userId && ms.Message.RoomId == roomId
-                    && ms.Status != MessageStatusEnum.Read
-                 );
+                 .Where(ms => ms.UserId == userId && ms.Message.RoomId == roomId && ms.Status != MessageStatusEnum.Read);
 
-            // GEt the  IDs
+            // Get the IDs
             var messageIds = await unreadQuery.Select(ms => ms.MessageId).ToListAsync();
 
             if (messageIds.Any())
             {
-                //foreach (var status in unreadStatuses)
-                //{
-                //    status.Status = MessageStatusEnum.Read;
-                //    status.ReadAt = DateTime.UtcNow;
-                //}
-                //await _context.SaveChangesAsync();
-
-                // (Single SQL Query)
+                // (Single SQL Query optimization)
                 await unreadQuery.ExecuteUpdateAsync(s => s
                     .SetProperty(ms => ms.Status, MessageStatusEnum.Read)
                     .SetProperty(ms => ms.ReadAt, DateTime.UtcNow)
                 );
-
 
                 await Clients.Group(roomId.ToString()).SendAsync("MessagesRead", new { roomId, messageIds, userId });
             }
@@ -170,9 +164,8 @@ namespace ChatAPI.Hubs
         // Handle user disconnection
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            // SignalR automatically removes ConnectionId from groups ** all of entered groups **
+            // *** SignalR automatically removes the ConnectionId from all groups upon disconnect ***
             await base.OnDisconnectedAsync(exception);
         }
-
     }
 }
