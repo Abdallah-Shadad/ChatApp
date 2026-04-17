@@ -33,7 +33,7 @@ A production-grade real-time chat API built with **ASP.NET Core 9**, **SignalR**
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -75,7 +75,7 @@ https://localhost:7063/swagger
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 ### Authentication (HTTP)
 
@@ -164,7 +164,7 @@ const connection = new signalR.HubConnectionBuilder()
 
 ---
 
-## 🗄️ Database Schema
+## Database Schema
 
 ```
 USER
@@ -205,7 +205,7 @@ MESSAGESTATUS  [composite PK: MessageId + UserId]
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 ChatAPI/
