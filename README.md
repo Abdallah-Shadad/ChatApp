@@ -30,6 +30,7 @@ A production-grade real-time chat API built with **ASP.NET Core 9**, **SignalR**
 | Password Hashing | BCrypt.Net |
 | Object Mapping | AutoMapper |
 | API Docs | Swagger / OpenAPI |
+| Frontend (POC) | React 18 + Vite (AI-Generated for Demo) |
 
 ---
 
@@ -73,6 +74,13 @@ dotnet run
 https://localhost:7063/swagger
 ```
 
+**6. React Frontend**
+From the project root
+```
+cd Frontend
+npm install
+npm run dev
+```
 ---
 
 ## API Reference
@@ -265,10 +273,23 @@ Enforces uniqueness at the database level — one membership per user per room, 
 Integer enum values corrupt silently when enum order changes. Storing `"Delivered"` instead of `1` makes data self-describing and immune to refactoring bugs.
 
 ---
+## Frontend (Proof of Concept)
+While this repository primarily focuses on the Backend Engineering and Real-Time Architecture, a functional frontend is included to demonstrate the API in action.
 
+Note on Frontend Development: > The included React application was developed using AI-assisted generation. It serves as a rapid Proof of Concept (POC) designed to visualize the real-time SignalR flows, authentication cycles, and message delivery states. This allows for immediate end-to-end testing of the system's capabilities without the need for manual UI development from scratch.
+
+Key UI Features:
+
+Real-time message streaming and state management.
+
+Dynamic typing indicators and delivery statuses.
+
+Clean, dark-themed interface built with custom CSS.
+
+---
 ##  Future Enhancements
 
-- [ ] **Add minimal frontend** — basic UI to interact with the Chat API
+- [✅] **Add minimal frontend** — basic UI to interact with the Chat API
 - [ ] **Idempotency keys** on `SendMessage` — prevent duplicate messages on network retry
 - [ ] **Multiple device support** — deliver to all active connections per user
 - [ ] **Read receipts per user** — show who specifically has read a message
@@ -280,6 +301,7 @@ Integer enum values corrupt silently when enum order changes. Storing `"Delivere
 - [ ] **End-to-end encryption** — client-side key exchange
 
 ---
+
 
 ## License
 
