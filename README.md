@@ -290,6 +290,7 @@ Clean, dark-themed interface built with custom CSS.
 ##  Future Enhancements
 
 - [✅] **Add minimal frontend** — basic UI to interact with the Chat API
+- [ ] **User Discovery Improvements** — implement adding members by Username/Email instead of Database IDs for better User Experience.
 - [ ] **Idempotency keys** on `SendMessage` — prevent duplicate messages on network retry
 - [ ] **Multiple device support** — deliver to all active connections per user
 - [ ] **Read receipts per user** — show who specifically has read a message
