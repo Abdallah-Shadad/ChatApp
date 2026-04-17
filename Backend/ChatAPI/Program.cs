@@ -1,5 +1,6 @@
 using ChatAPI.Data;
 using ChatAPI.Hubs;
+using ChatAPI.Middleware;
 using ChatAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -79,10 +80,15 @@ public class Program
         // Sign Services For DI
         builder.Services.AddScoped<IAuthService, AuthService>();
 
+        builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+        builder.Services.AddProblemDetails();
+
         // BUILD THE APP 
         var app = builder.Build();
 
         // MIDDLEWARE PIPELINE 
+
+        app.UseExceptionHandler();
 
         if (app.Environment.IsDevelopment())
         {

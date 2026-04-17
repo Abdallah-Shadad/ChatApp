@@ -21,6 +21,18 @@ namespace ChatAPI.Mappings
             // map from message to messageDto 
             CreateMap<Message, MessageDto>()
                 .ForMember(d => d.SenderName, o => o.MapFrom(s => s.Sender.Username));
+
+            // Map from Room -> RoomResponse
+            CreateMap<Room, RoomResponse>()
+                // Map CreatedByUsername from the related CreatedByUser's Username
+                .ForMember(d => d.CreatedByUsername, o => o.MapFrom(s => s.CreatedByUser.Username));
+
+            // Map from RoomMember -> MemberResponse
+            CreateMap<RoomMember, MemberResponse>()
+                .ForMember(d => d.UserId, o => o.MapFrom(s => s.UserId))
+                .ForMember(d => d.Username, o => o.MapFrom(s => s.User.Username))
+                // Map Role enum to string for easier client handling
+                .ForMember(d => d.Role, o => o.MapFrom(s => s.Role.ToString()));
         }
     }
 }
