@@ -67,7 +67,7 @@ namespace ChatAPI.Data
                 .WithOne(m => m.Room)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Room - RoomMembers: Cascade delete room members when a room is deleted 
+            // Message - MessageStatuses: Cascade delete statuses when a message is deleted 
             modelBuilder.Entity<MessageStatus>()
                 .HasOne(ms => ms.Message)
                 .WithMany(m => m.Statuses)

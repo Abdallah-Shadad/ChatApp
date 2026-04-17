@@ -37,7 +37,12 @@ namespace ChatAPI.Services
             var room = await _context.Rooms.FirstOrDefaultAsync(r => r.Id == roomId);
             if (room == null) throw new NotFoundException("Room not found.");
 
-            // Owner can remove anyone, member can remove themselves
+            // FIX: Prevent the owner from leaving the room. 
+            // If the owner wants to leave, they must delete the entire room.
+            if (room.CreatedByUserId == targetUserId && requesterId == targetUserId)
+                throw new BadRequestException("The owner cannot leave the room. You must delete the room instead.");
+
+            // Permissions: The Owner can remove anyone; a Member can remove themselves.
             bool canRemove = (room.CreatedByUserId == requesterId) || (requesterId == targetUserId);
 
             if (!canRemove)
