@@ -79,6 +79,8 @@ public class Program
 
         // Sign Services For DI
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IRoomService, RoomService>();
+        builder.Services.AddScoped<IMemberService, MemberService>();
 
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
         builder.Services.AddProblemDetails();
